@@ -12,13 +12,13 @@ node-poplib offers an MIT-licensed client library for the POP3 protocol. It is c
 
 You have two installation options:
 
-0. Via npm: `npm install node-pop3-client`
+0. Via npm: `npm install poplib`
 
 1. Download the source and install it yourself
 
 ## Usage
 
-node-pop3-client is event based. It is best to illustrate via examples:
+node-poplib is event based. It is best to illustrate via examples:
 
 Here we initialize the client (for plain text transmission):
 
