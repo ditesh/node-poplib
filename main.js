@@ -179,12 +179,6 @@ function POP3Client(port, host, enabletls, debug) {
 
 util.inherits(POP3Client, events.EventEmitter);
 
-POP3Client.prototype.connect = function(port, host) {
-
-	// XXX
-
-};
-
 POP3Client.prototype.auth = function (username, password) {
 
 	var self = this;
