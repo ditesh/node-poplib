@@ -1,0 +1,15 @@
+{
+	"name": "pop3-client",
+        "version": "v0.1.0",
+        "description": "POP3 client written in Node.js",
+        "homepage": "https://github.com/ditesh/node-pop3-client",
+	"keywords": ["server", "POP3", "mail", "pop3", "client", "pop", "email"],
+        "author": {
+                "name": "Ditesh Shashikant Gathani",
+                "email": "ditesh@gathani.org",
+                "url": "http://ditesh.gathani.org/blog/"
+        },
+	"dependencies": ["unixlib", "optimist", "simplelogger", "hashlib"]
+        "repository": { "type" : "git", "url" : "https://github.com/ditesh/node-pop3-client.git" },
+        "main": "main.js"
+}
