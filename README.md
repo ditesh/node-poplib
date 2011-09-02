@@ -1,8 +1,8 @@
-# node-pop3-client
+# node-poplib
 
-node-pop3-client offers an MIT-licensed client library for the POP3 protocol. It is currently RFC1939 compliant and offers the following capabilities:
+node-poplib offers an MIT-licensed client library for the POP3 protocol. It is currently RFC1939 compliant and offers the following capabilities:
 
-* USER, PASS
+* USER, PASS, APOP
 * LIST, TOP, RETR, DELE
 * UIDL, NOOP, CAPA
 * RSET, QUIT
@@ -23,7 +23,7 @@ node-pop3-client is event based. It is best to illustrate via examples:
 Here we initialize the client (for plain text transmission):
 
 ````javascript
-var POP3Client = require("node-pop3-client");
+var POP3Client = require("node-poplib");
 var client = new POP3Client(port, host, tls);
 ````
 
@@ -76,7 +76,7 @@ client.on("connect", function() {
 });
 ````
 
-Note that on successful auth, we try listing. Note that for all events, the first received argument is always a boolean indicating whether the command succeeded. The last received argument is always the raw unparsed data received from the remote server. The intermediate arguments contain parsed data.
+Note that on successful auth, we try listing. For all events, the first received argument is always a boolean indicating whether the command succeeded. The last received argument is always the raw unparsed data received from the remote server. The intermediate arguments contain parsed data.
 
 ````javascript
 client.on("auth", function(status, rawdata) {
@@ -156,16 +156,17 @@ client.on("quit", function(status, rawdata) {
 
 See tests and demos for more examples.
 
-## Demos
+## Tests & Demos
 
 For test purposes, you can use the following sendmail.sh script to pump email into your SMTP server for retrieval via POP3:
 
-`./sendmail.sh 10 "user@example.com" "this is my subject" "this is my body"`
-
+````bash
+./sendmail.sh 10 "user@example.com" "this is my subject" "this is my body"
+````
 
 There is a full-featured POP3 client example in `tests/demo.js`.
 
-There is also a simple example of downloading all emails in a POP3 server and saving it locally in am mbox formatted file in `tests/retrieve-all.js`.
+There is also a simple example of downloading all emails in a POP3 server and saving it locally in an mbox formatted file in `tests/retrieve-all.js`.
 
 There is a TLS example in `tests/tls.js`.
 
