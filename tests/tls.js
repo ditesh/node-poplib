@@ -94,30 +94,11 @@ client.on("list", function(status, msgcount, msgnumber, data, rawdata) {
 		totalmsgcount = msgcount;
 		currentmsg = 1;
 		console.log("LIST success with " + msgcount + " message(s)");
-		client.retr(1);
+		client.quit();
 
 	} else {
 
 		console.log("LIST success with 0 message(s)");
-		client.quit();
-
-	}
-});
-
-client.on("retr", function(status, msgnumber, data, rawdata) {
-
-	if (status === true) {
-
-		console.log("RETR success " + msgnumber);
-		currentmsg += 1;
-
-		fs.write(fd, new Buffer(data + "\r\n\r\n"), 0, data.length+4, null, function(err, written, buffer) {
-			client.quit();
-		});
-
-	} else {
-
-		console.log("RETR failed for msgnumber " + msgnumber);
 		client.quit();
 
 	}

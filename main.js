@@ -33,35 +33,22 @@ var 	net = require("net"),
 // Constructor
 function POP3Client(port, host, enabletls, debug) {
 
-	// Set up EventEmitter constructor function
-	events.EventEmitter.call(this);
-
-	// Closure variables for socket.on("data")
+	// Private variables follow
 	var self = this;
 	var response = null;
 	var checkResp = true;
 	var bufferedData = "";
-
-	// Variables for the object
-	self.state = 0,
-	self.locked = false,
-	self.multiline = false,
-	self.data = {
-
-		apop: false,
-		banner: "",
-		username: "",
-		host: host,
-		port: port,
-		tls: enabletls
-
-	},
-	self.callback = function(resp, data) {
+	var state = 0;
+	var locked = false;
+	var multiline = false;
+	var socket = null;
+	var tlssock = null;
+	var callback = function(resp, data) {
 
 		if (resp === false) {
 
-			self.locked = false;
-			self.callback = function() {};
+			locked = false;
+			callback = function() {};
 			self.emit("connect-failure", data);
 
 		} else {
@@ -81,33 +68,123 @@ function POP3Client(port, host, enabletls, debug) {
 				}
 			}
 
-			self.state = 1;
+			state = 1;
 			self.data["banner"] = banner;
 			self.emit("connect", data);
 
 		}
 	};
 
-	// Remote end socket
+	// Public variables follow
+	this.data = {
 
-	if (enabletls === true) {
+		apop: false,
+		banner: "",
+		username: "",
+		host: host,
+		port: port,
+		tls: enabletls
 
-		self.conn = tls.connect(port, host, function() {
+	};
 
-			if (self.conn.authorized === false)
-				self.emit("tls-error", self.conn.authorizationError);
+	// Privileged methods follow
+	this.setCallback = function(cb) { callback = cb; };
+	this.getCallback = function() { return callback };
+	this.setState = function(val) { state = val; };
+	this.getState = function() { return state; };
+	this.setLocked = function(val) { locked = val; };
+	this.getLocked = function() { return locked; };
+	this.setMultiline = function(val) { multiline = val; };
+	this.getMultiline = function() { return multiline; };
+
+	// Writes to remote server socket
+	this.write = function(command, argument) {
+
+		var text = command;
+
+		if (argument !== undefined) text = text + " " + argument + "\r\n";
+		else text = text + "\r\n";
+
+		if (debug) util.log(text);
+
+		socket.write(text);
+
+	};
+
+	// Kills the socket connection
+	this.end = function() {
+		socket.end();
+	};
+
+	// Upgrades a standard unencrypted TCP connection to use TLS
+	// Liberally copied and modified from https://gist.github.com/848444
+	// starttls() should be a private function, but I can't figure out
+	// how to get a public prototypal method (stls) to talk to private method (starttls)
+	// which references private variables without going through a privileged method
+	this.starttls = function(options) {
+
+		var s = socket;
+		s.removeAllListeners("end");
+		s.removeAllListeners("data");
+		s.removeAllListeners("error");
+		socket=null;
+
+		var sslcontext = require('crypto').createCredentials(options);
+		var pair = tls.createSecurePair(sslcontext, false);
+		var cleartext = pipe(pair);
+
+		pair.on('secure', function() {
+
+			var verifyError = pair.ssl.verifyError();
+			cleartext.authorized = true;
+
+			if (verifyError) {
+
+				cleartext.authorized = false;
+				cleartext.authorizationError = verifyError;
+
+			}
+
+			cleartext.on("data", onData);
+			cleartext.on("error", onError);
+			cleartext.on("end", onEnd);
+			socket=cleartext;
+			(self.getCallback())(cleartext.authorized, cleartext.authorizationError);
 
 		});
 
-		self.socket = self.conn;
+		cleartext._controlReleased = true;
 
-	} else {
+		function pipe(pair) {
 
-		self.socket = new net.createConnection(port, host);
+			pair.encrypted.pipe(s);
+			s.pipe(pair.encrypted);
 
-	}
+			pair.fd = s.fd;
+			var cleartext = pair.cleartext;
+			cleartext.socket = s;
+			cleartext.encrypted = pair.encrypted;
+			cleartext.authorized = false;
 
-	self.socket.on("data", function(data) {
+			function onerror(e) {
+				if (cleartext._controlReleased) cleartext.emit('error', e);
+			}
+
+			function onclose() {
+				s.removeListener('error', onerror);
+				s.removeListener('close', onclose);
+			}
+
+			s.on('error', onerror);
+			s.on('close', onclose);
+			return cleartext;
+
+		}
+	};
+
+	// Private methods follow
+	// Event handlers follow
+	function onData(data) {
 
 		data = data.toString("ascii");
 		bufferedData += data;
@@ -128,95 +205,138 @@ function POP3Client(port, host, enabletls, debug) {
 
 		if (checkResp === false) {
 
-			if (self.multiline === true && bufferedData.substr(bufferedData.length-5) === "\r\n.\r\n") {
+			if (multiline === true && bufferedData.substr(bufferedData.length-5) === "\r\n.\r\n") {
 
-				checkResp = true;
-				self.callback(response, String(bufferedData));
-				self.multiline = false;
-				bufferedData = "";
+				// Make a copy to avoid race conditions
+				var responseCopy = response;
+				var bufferedDataCopy = bufferedData;
+
 				response = null;
-
-			} else if (self.multiline === false) {
-
 				checkResp = true;
-				self.callback(response, bufferedData);
-				self.multiline = false;
+				multiline = false;
 				bufferedData = "";
+
+				callback(responseCopy, bufferedDataCopy);
+
+			} else if (multiline === false) {
+
+				// Make a copy to avoid race conditions
+				var responseCopy = response;
+				var bufferedDataCopy = bufferedData;
+
 				response = null;
+				checkResp = true;
+				multiline = false;
+				bufferedData = "";
+
+				callback(responseCopy, bufferedDataCopy);
 
 			}
 		} 
-	});
+	}
 
-	self.socket.on("error", function(err) {
+	function onError(err) {
 		self.emit("error", err);
-	});
+	}
 
-	self.socket.on("end", function(data) {
+	function onEnd(data) {
+		self.setState(0);
+		socket = null;
+	}
 
-		self.state = 0;
-		self.socket = null;
 
-	});
+	// Constructor code follows
+	// Set up EventEmitter constructor function
+	events.EventEmitter.call(this);
 
-	// Private helper methods
-	// Writes to remote server socket
-	self.write = function(command, argument) {
+	// Remote end socket
+	if (enabletls === true) {
 
-		var text = command;
+		tlssock = tls.connect(port, host, function() {
+			if (tlssock.authorized === false) self.emit("tls-error", tlssock.authorizationError);
+		});
 
-		if (argument !== undefined)
-			text = text + " " + argument + "\r\n";
-		else
-			text = text + "\r\n";
+		socket = tlssock;
 
-		if (debug) util.log(text);
+	} else socket = new net.createConnection(port, host);
 
-		self.socket.write(text);
+	// Set up event handlers
+	socket.on("data", onData);
+	socket.on("error", onError);
+	socket.on("end", onEnd);
 
-	};
 }
 
 util.inherits(POP3Client, events.EventEmitter);
+
+POP3Client.prototype.stls = function() {
+
+	var self = this;
+
+	if (self.getState() !== 1) self.emit("invalid-state", "stls");
+	else if (self.getLocked() === true) self.emit("locked", "stls");
+	else if (self.data["tls"] === true) self.emit("stls", false, "Unable to execute STLS as TLS connection already established");
+	else {
+
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
+
+			self.setLocked(false);
+			self.setCallback(function() {});
+
+			if (resp === true) {
+
+				self.setCallback(function() {
+					self.emit("stls", true, data);
+				});
+
+				self.starttls();
+
+			} else self.emit("stls", false, data);
+		});
+
+		self.setMultiline(false);
+		self.write("STLS");
+
+	}
+};
 
 POP3Client.prototype.auth = function (username, password) {
 
 	var self = this;
 
-	if (self.state !== 1) self.emit("invalid-state", "auth");
-	else if (self.locked === true) self.emit("locked", "auth");
+	if (self.getState() !== 1) self.emit("invalid-state", "auth");
+	else if (self.getLocked() === true) self.emit("locked", "auth");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
 			if (resp === false) {
 
-				self.locked = false;
-				self.callback = function() {};
+				self.setLocked(false);
+				self.setCallback(function() {});
 				self.emit("auth", false, data);
 
 			} else {
 
-				self.callback = function(resp, data) {
+				self.setCallback(function(resp, data) {
 
-					self.locked = false;
-					self.callback = function() {};
+					self.setLocked(false);
+					self.setCallback(function() {});
 
-					if (resp !== false)
-						self.state = 2;
-
+					if (resp !== false) self.setState(2);
 					self.emit("auth", resp, data);
 
-				};
+				});
 
-				self.multiline = false;
+				self.setMultiline(false);
 				self.write("PASS", password);
 
 			}
-		};
+		});
 
-		self.multiline = false;
+		self.setMultiline(false);
 		self.write("USER", username);
 
 	}
@@ -226,25 +346,23 @@ POP3Client.prototype.apop = function (username, password) {
 
 	var self = this;
 
-	if (self.state !== 1) self.emit("invalid-state", "apop");
-	else if (self.locked === true) self.emit("locked", "apop");
+	if (self.getState() !== 1) self.emit("invalid-state", "apop");
+	else if (self.getLocked() === true) self.emit("locked", "apop");
 	else if (self.data["apop"] === false) self.emit("apop", false, "APOP support not detected on remote server");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 
-			if (resp === true)
-				self.state = 2;
-
+			if (resp === true) self.setState(2);
 			self.emit("apop", resp, data);
 
-		};
+		});
 
-		self.multiline = false;
+		self.setMultiline(false);
 		self.write("APOP", username + " " + hashlib.md5(self.data["apop-timestamp"] + password));
 
 	}
@@ -254,15 +372,15 @@ POP3Client.prototype.top = function(msgnumber, lines) {
 
 	var self = this;
 
-	if (self.state !== 2) self.emit("invalid-state", "top");
-	else if (self.locked === true) self.emit("locked", "top");
+	if (self.getState() !== 2) self.emit("invalid-state", "top");
+	else if (self.getLocked() === true) self.emit("locked", "top");
 	else {
 
-		self.callback = function(resp, data) {
+		self.setCallback(function(resp, data) {
 
 			var returnValue = null;
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 
 			if (resp !== false) {
 
@@ -277,9 +395,9 @@ POP3Client.prototype.top = function(msgnumber, lines) {
 
 			self.emit("top", resp, msgnumber, returnValue, data);
 
-		}
+		});
 
-		self.multiline = true;
+		self.setMultiline(true);
 		self.write("TOP", msgnumber + " " + lines);
 
 	}
@@ -289,17 +407,17 @@ POP3Client.prototype.list = function(msgnumber) {
 
 	var self = this;
 
-	if (self.state !== 2) self.emit("invalid-state", "list");
-	else if (self.locked === true) self.emit("locked", "list");
+	if (self.getState() !== 2) self.emit("invalid-state", "list");
+	else if (self.getLocked() === true) self.emit("locked", "list");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
 			var returnValue = null;
 			var msgcount = 0;
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 
 			if (resp !== false) {
 
@@ -347,11 +465,12 @@ POP3Client.prototype.list = function(msgnumber) {
 
 			self.emit("list", resp, msgcount, msgnumber, returnValue, data);
 
-		}
+		});
 
-		if (msgnumber !== undefined) self.multiline = false;
-		else self.multiline = true;
+		if (msgnumber !== undefined) self.setMultiline(false);
+		else self.setMultiline(true);
 
+		self.setMultiline(true);
 		self.write("LIST", msgnumber);
 
 	}
@@ -361,16 +480,16 @@ POP3Client.prototype.stat = function() {
 
 	var self = this;
 
-	if (self.state !== 2) self.emit("invalid-state", "stat");
-	else if (self.locked === true) self.emit("locked", "stat");
+	if (self.getState() !== 2) self.emit("invalid-state", "stat");
+	else if (self.getLocked() === true) self.emit("locked", "stat");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
 			var returnValue = null;
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 
 			if (resp !== false) {
 
@@ -385,9 +504,9 @@ POP3Client.prototype.stat = function() {
 
 			self.emit("stat", resp, returnValue, data);
 
-		}
+		});
 
-		self.multiline = false;
+		self.setMultiline(false);
 		self.write("STAT", undefined);
 
 	}
@@ -397,16 +516,16 @@ POP3Client.prototype.uidl = function(msgnumber) {
 
 	var self = this;
 
-	if (self.state !== 2) self.emit("invalid-state", "uidl");
-	else if (self.locked === true) self.emit("locked", "uidl");
+	if (self.getState() !== 2) self.emit("invalid-state", "uidl");
+	else if (self.getLocked() === true) self.emit("locked", "uidl");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
 			var returnValue = null;
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 
 			if (resp !== false) {
 
@@ -432,8 +551,7 @@ POP3Client.prototype.uidl = function(msgnumber) {
 
 						while(true) {
 
-							if (offset > endOffset)
-								break;
+							if (offset > endOffset) break;
 
 							newoffset = data.indexOf("\r\n", offset);
 							listitem = data.substr(offset, newoffset-offset);
@@ -448,10 +566,10 @@ POP3Client.prototype.uidl = function(msgnumber) {
 
 			self.emit("uidl", resp, msgnumber, returnValue, data);
 
-		}
+		});
 
-		if (msgnumber !== undefined) self.multiline = false;
-		else self.multiline = true;
+		if (msgnumber !== undefined) self.setMultiline(false);
+		else self.setMultiline(true);
 
 		self.write("UIDL", msgnumber);
 
@@ -462,16 +580,16 @@ POP3Client.prototype.retr = function(msgnumber) {
 
 	var self = this;
 
-	if (self.state !== 2) self.emit("invalid-state", "retr");
-	else if (self.locked === true) self.emit("locked", "retr");
+	if (self.getState() !== 2) self.emit("invalid-state", "retr");
+	else if (self.getLocked() === true) self.emit("locked", "retr");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
 			var returnValue = null;
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 
 			if (resp !== false) {
 
@@ -483,9 +601,9 @@ POP3Client.prototype.retr = function(msgnumber) {
 
 			self.emit("retr", resp, msgnumber, returnValue, data);
 
-		}
+		});
 
-		self.multiline = true;
+		self.setMultiline(true);
 		self.write("RETR", msgnumber);
 
 	}
@@ -495,20 +613,20 @@ POP3Client.prototype.dele = function(msgnumber) {
 
 	var self = this;
 
-	if (self.state !== 2) self.emit("invalid-state", "dele");
-	else if (self.locked === true) self.emit("locked", "dele");
+	if (self.getState() !== 2) self.emit("invalid-state", "dele");
+	else if (self.getLocked() === true) self.emit("locked", "dele");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 			self.emit("dele", resp, msgnumber, data);
 
-		}
+		});
 
-		self.multiline = false;
+		self.setMultiline(false);
 		self.write("DELE", msgnumber);
 
 	}
@@ -518,20 +636,20 @@ POP3Client.prototype.noop = function() {
 
 	var self = this;
 
-	if (self.state !== 2) self.emit("invalid-state", "noop");
-	else if (self.locked === true) self.emit("locked", "noop");
+	if (self.getState() !== 2) self.emit("invalid-state", "noop");
+	else if (self.getLocked() === true) self.emit("locked", "noop");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 			self.emit("noop", resp, data);
 
-		}
+		});
 
-		self.multiline = false;
+		self.setMultiline(false);
 		self.write("NOOP", undefined);
 
 	}
@@ -541,20 +659,20 @@ POP3Client.prototype.rset = function() {
 
 	var self = this;
 
-	if (self.state !== 2) self.emit("invalid-state", "rset");
-	else if (self.locked === true) self.emit("locked", "rset");
+	if (self.getState() !== 2) self.emit("invalid-state", "rset");
+	else if (self.getLocked() === true) self.emit("locked", "rset");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 			self.emit("rset", resp, data);
 
-		}
+		});
 
-		self.multiline = false;
+		self.setMultiline(false);
 		self.write("RSET", undefined);
 
 	}
@@ -564,15 +682,15 @@ POP3Client.prototype.capa = function() {
 
 	var self = this;
 
-	if (self.locked === true) self.emit("locked", "capa");
+	if (self.getLocked() === true) self.emit("locked", "capa");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
 			var returnValue = null;
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 
 			if (resp === true) {
 
@@ -585,9 +703,9 @@ POP3Client.prototype.capa = function() {
 
 			self.emit("capa", resp, returnValue, data);
 
-		}
+		});
 
-		self.multiline = true;
+		self.setMultiline(true);
 		self.write("CAPA", undefined);
 
 	}
@@ -597,22 +715,22 @@ POP3Client.prototype.quit = function() {
 
 	var self = this;
 
-	if (self.state === 0) self.emit("invalid-state", "quit");
-	else if (self.locked === true) self.emit("locked", "quit");
+	if (self.getState() === 0) self.emit("invalid-state", "quit");
+	else if (self.getLocked() === true) self.emit("locked", "quit");
 	else {
 
-		self.locked = true;
-		self.callback = function(resp, data) {
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
 
-			self.locked = false;
-			self.callback = function() {};
+			self.setLocked(false);
+			self.setCallback(function() {});
 
-			self.socket.end();
+			self.end();
 			self.emit("quit", resp, data);
 
-		}
+		});
 
-		self.multiline = false;
+		self.setMultiline(false);
 		self.write("QUIT", undefined);
 
 	}

@@ -1,12 +1,15 @@
 # node-poplib
 
-node-poplib offers an MIT-licensed client library for the POP3 protocol. It is currently RFC1939 compliant and offers the following capabilities:
+node-poplib offers an MIT-licensed client library for the POP3 protocol. It is currently compliant to the relevant RFC's and offers the following capabilities:
 
 * USER, PASS, APOP
 * LIST, TOP, RETR, DELE
 * UIDL, NOOP, CAPA
 * RSET, QUIT
 * Plaintext and TLS support
+* STLS
+
+It complies to RFC 1939 (POP3) and RFC 2595 (STLS);
 
 ## Installation
 
@@ -168,6 +171,6 @@ There is a full-featured POP3 client example in `tests/demo.js`.
 
 There is also a simple example of downloading all emails in a POP3 server and saving it locally in an mbox formatted file in `tests/retrieve-all.js`.
 
-There is a TLS example in `tests/tls.js`.
+There is a TLS example in `tests/tls.js`. STLS example is available in `tests/stls.js`.
 
 If you want to try APOP support, see `tests/apop.js`.
