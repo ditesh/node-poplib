@@ -88,7 +88,7 @@ client.on("connect", function() {
 Note that on successful auth, we try listing. For all events, the first received argument is always a boolean indicating whether the command succeeded. The last received argument is always the raw unparsed data received from the remote server. The intermediate arguments contain parsed data.
 
 ````javascript
-client.on("login", function(status, * rawdata) {
+client.on("login", function(status, rawdata) {
 
 	if (status) {
 
@@ -104,7 +104,7 @@ client.on("login", function(status, * rawdata) {
 });
 
 // Data is a 1-based index of messages, if there are any messages
-client.on("list", function(status, msgcount, msgnumber, data, * rawdata) {
+client.on("list", function(status, msgcount, msgnumber, data, rawdata) {
 
 	if (status === false) {
 
@@ -123,7 +123,7 @@ client.on("list", function(status, msgcount, msgnumber, data, * rawdata) {
 	}
 });
 
-client.on("retr", function(status, msgnumber, data, * rawdata) {
+client.on("retr", function(status, msgnumber, data, rawdata) {
 
 	if (status === true) {
 
@@ -139,7 +139,7 @@ client.on("retr", function(status, msgnumber, data, * rawdata) {
 	}
 });
 
-client.on("dele", function(status, msgnumber, data, * rawdata) {
+client.on("dele", function(status, msgnumber, data, rawdata) {
 
 	if (status === true) {
 
@@ -154,7 +154,7 @@ client.on("dele", function(status, msgnumber, data, * rawdata) {
 	}
 });
 
-client.on("quit", function(status, * rawdata) {
+client.on("quit", function(status, rawdata) {
 
 	if (status === true) console.log("QUIT success");
 	else console.log("QUIT failed");
