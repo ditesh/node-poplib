@@ -26,14 +26,16 @@
 
 var POP3Client = require("../main.js");
 var     argv = require('optimist')
-                .usage("Usage: $0 --host [host] --port [port] --username [username] --password [password] --debug [on/off] --networkdebug [on/off] --login [on/off] --download [on/off]")
-                .demand(['username', 'password'])
+                .usage("Usage: $0 --host [host] --port [port] --username [username] --password [password] --debug [on/off] --networkdebug [on/off] --auth [plain/cram-md5] --tls [on/off] --download [on/off]")
+                .demand(['username', 'password', 'auth'])
+		.describe('auth', 'Valid AUTH types: plain, cram-md5')
                 .argv;
 
 var host = argv.host || "localhost";
-var port = argv.port || 995;
+var port = argv.port || 110;
 var debug = argv.debug === "on" ? true : false;
-var login = argv.login === "on" ? true : false;
+var tls = argv.tls === "on" ? true : false;
+var auth = argv.auth;
 var download = argv.download === "on" ? true : false;
 
 var username = argv.username;
@@ -41,9 +43,10 @@ var password = argv.password;
 var totalmsgcount = 0;
 var currentmsg = 0;
 
+// We carefully ignore self signed cert errors (bad practice!)
 var client = new POP3Client(port, host, {
 
-		enabletls: true,
+		enabletls: tls,
 		ignoretlserrs: true,
 		debug: (argv.networkdebug === "on" ? true: false)
 
@@ -66,39 +69,40 @@ client.on("error", function(err) {
 
 client.on("connect", function(status, rawdata) {
 
-	if (status) {
+        if (status) {
 
 		console.log("CONNECT success");
-		if (login) client.login(username, password);
-		else client.quit();
+		client.auth(auth, username, password);
 
-	} else {
+        } else {
 
 		console.log("CONNECT failed because " + rawdata);
-		return;
+                return;
 
-	}
+        }
 });
 
 client.on("invalid-state", function(cmd) {
-	console.log("Invalid state, failed. You tried calling " + cmd);
+	console.log("Invalid state. You tried calling " + cmd);
+	client.quit();
 });
 
 client.on("locked", function(cmd) {
-	console.log("Current command has not finished yet, failed. You tried calling " + cmd);
+	console.log("Current command has not finished yet. You tried calling " + cmd);
+	client.quit();
 });
 
-client.on("login", function(status, data, rawdata) {
+client.on("auth", function(status, errmsg, rawdata) {
 
 	if (status) {
 
-		console.log("LOGIN/PASS success");
+		console.log("AUTH success");
 		if (download) client.list();
 		else client.quit();
 
 	} else {
 
-		console.log("LOGIN/PASS failed");
+		console.log("AUTH failed (" + errmsg + ")");
 		client.quit();
 
 	}

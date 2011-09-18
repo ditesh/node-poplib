@@ -34,12 +34,11 @@ var     argv = require('optimist')
 var host = argv.host || "localhost";
 var port = argv.port || 110;
 var debug = argv.debug === "on" ? true : false;
-var networkdebug = argv.networkdebug || false;
 var msgnumber = argv.msgnumber;
 var username = argv.username;
 var password = argv.password;
 
-var client = new POP3Client(port, host, false, networkdebug);
+var client = new POP3Client(port, host, { argv.networkdebug: (argv.debug === "on" ? true: false) });
 
 client.on("error", function(err) {
 

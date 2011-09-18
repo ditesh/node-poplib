@@ -26,38 +26,25 @@
 
 var POP3Client = require("../main.js");
 var     argv = require('optimist')
-                .usage("Usage: $0 --host [host] --port [port] --username [username] --password [password] --debug [on/off] --networkdebug [on/off] --login [on/off] --download [on/off]")
+                .usage("Usage: $0 --host [host] --port [port] --username [username] --password [password] --debug [on/off] --networkdebug [on/off]")
                 .demand(['username', 'password'])
                 .argv;
 
 var host = argv.host || "localhost";
-var port = argv.port || 995;
+var port = argv.port || 110;
 var debug = argv.debug === "on" ? true : false;
-var login = argv.login === "on" ? true : false;
-var download = argv.download === "on" ? true : false;
-
+var filename = argv.filename;
 var username = argv.username;
 var password = argv.password;
 var totalmsgcount = 0;
 var currentmsg = 0;
 
-var client = new POP3Client(port, host, {
+var client = new POP3Client(port, host, { debug: (argv.debug === "on" ? true: false) });
 
-		enabletls: true,
-		ignoretlserrs: true,
-		debug: (argv.networkdebug === "on" ? true: false)
+client.on("connect-error", function(err) {
 
-	});
+console.log("potato");
 
-client.on("tls-error", function(err) {
-
-	console.log("TLS error occurred, failed");
-	console.log(err);
-
-});
-
-client.on("close", function() {
-	console.log("close event unexpectedly received, failed");
 });
 
 client.on("error", function(err) {
@@ -69,8 +56,7 @@ client.on("connect", function(status, rawdata) {
 	if (status) {
 
 		console.log("CONNECT success");
-		if (login) client.login(username, password);
-		else client.quit();
+		client.login(username, password);
 
 	} else {
 
@@ -88,86 +74,17 @@ client.on("locked", function(cmd) {
 	console.log("Current command has not finished yet, failed. You tried calling " + cmd);
 });
 
-client.on("login", function(status, data, rawdata) {
+client.on("login", function(status, rawdata) {
 
-	if (status) {
-
-		console.log("LOGIN/PASS success");
-		if (download) client.list();
-		else client.quit();
-
-	} else {
-
-		console.log("LOGIN/PASS failed");
-		client.quit();
-
-	}
+	if (status) console.log("LOGIN success");
+	else console.log("LOGIN failed because " + rawdata);
+	client.quit();
 
 });
-
-client.on("list", function(status, msgcount, msgnumber, data, rawdata) {
-
-	if (status === false) {
-
-		console.log("LIST failed");
-		client.quit();
-
-	} else if (msgcount > 0) {
-
-		totalmsgcount = msgcount;
-		currentmsg = 1;
-		console.log("LIST success with " + msgcount + " message(s)");
-		client.retr(1);
-
-	} else {
-
-		console.log("LIST success with 0 message(s)");
-		client.quit();
-
-	}
-});
-
-client.on("retr", function(status, msgnumber, data, rawdata) {
-
-	if (status === true) {
-
-		console.log("RETR success " + msgnumber + " with data " + data);
-		client.dele(msgnumber);
-
-	} else {
-
-		console.log("RETR failed for msgnumber " + msgnumber + " because " + rawdata);
-		client.quit();
-
-	}
-});
-
-client.on("dele", function(status, msgnumber, data, rawdata) {
-
-	if (status === true) {
-
-		console.log("DELE success for msgnumber " + msgnumber);
-
-		if (currentmsg < totalmsgcount) {
-
-			currentmsg += 1;
-			client.retr(currentmsg);
-
-		} else  client.quit();
-
-	} else {
-
-		console.log("DELE failed for msgnumber " + msgnumber);
-		client.quit();
-
-	}
-});
-
 
 client.on("quit", function(status, rawdata) {
 
-	client.removeAllListeners("close");
 	if (status === true) console.log("QUIT success");
-	else console.log("QUIT failed");
+	else console.log("QUIT failed because " + rawdata);
 
 });

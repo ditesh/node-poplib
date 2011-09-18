@@ -24,77 +24,63 @@
 
 */
 
+var fs = require("fs");
 var POP3Client = require("../main.js");
 var     argv = require('optimist')
-                .usage("Usage: $0 --host [host] --port [port] --username [username] --password [password] --debug [on/off] --networkdebug [on/off] --login [on/off] --download [on/off]")
-                .demand(['username', 'password'])
+                .usage("Usage: $0 --host [host] --port [port] --username [username] --password [password] --filename [filename] --debug [on/off] --networkdebug [on/off] --tls [on/off]")
+                .demand(['username', 'password', 'filename'])
                 .argv;
 
 var host = argv.host || "localhost";
-var port = argv.port || 995;
+var port = argv.port || 110;
 var debug = argv.debug === "on" ? true : false;
-var login = argv.login === "on" ? true : false;
-var download = argv.download === "on" ? true : false;
-
+var tls = argv.tls === "on" ? true : false;
+var filename = argv.filename;
 var username = argv.username;
 var password = argv.password;
 var totalmsgcount = 0;
 var currentmsg = 0;
 
+var fd = fs.openSync(filename, "a+");
+
 var client = new POP3Client(port, host, {
 
-		enabletls: true,
-		ignoretlserrs: true,
+		tlserrs: false,
+		enabletls: (argv.tls === "on" ? true: false),
 		debug: (argv.networkdebug === "on" ? true: false)
 
 	});
 
-client.on("tls-error", function(err) {
+client.on("error", function(err) {
 
-	console.log("TLS error occurred, failed");
+	if (err.errno === 111) console.log("Unable to connect to server, failed");
+	else console.log("Server error occurred, failed");
+
 	console.log(err);
 
 });
 
-client.on("close", function() {
-	console.log("close event unexpectedly received, failed");
-});
+client.on("connect", function() {
 
-client.on("error", function(err) {
-	console.log("Server error occurred, failed, " + err);
-});
+	console.log("CONNECT success");
+	client.auth(username, password);
 
-client.on("connect", function(status, rawdata) {
-
-	if (status) {
-
-		console.log("CONNECT success");
-		if (login) client.login(username, password);
-		else client.quit();
-
-	} else {
-
-		console.log("CONNECT failed because " + rawdata);
-		return;
-
-	}
 });
 
 client.on("invalid-state", function(cmd) {
-	console.log("Invalid state, failed. You tried calling " + cmd);
+	console.log("Invalid state. You tried calling " + cmd);
 });
 
 client.on("locked", function(cmd) {
-	console.log("Current command has not finished yet, failed. You tried calling " + cmd);
+	console.log("Current command has not finished yet. You tried calling " + cmd);
 });
 
-client.on("login", function(status, data, rawdata) {
+client.on("auth", function(status, data) {
 
 	if (status) {
 
 		console.log("LOGIN/PASS success");
-		if (download) client.list();
-		else client.quit();
+		client.list();
 
 	} else {
 
@@ -131,13 +117,20 @@ client.on("retr", function(status, msgnumber, data, rawdata) {
 
 	if (status === true) {
 
-		console.log("RETR success " + msgnumber + " with data " + data);
-		client.dele(msgnumber);
+		console.log("RETR success " + msgnumber);
+		currentmsg += 1;
+
+		fs.write(fd, new Buffer(data + "\r\n\r\n"), 0, data.length+4, null, function(err, written, buffer) {
+
+			if (err) client.rset();
+			else client.dele(msgnumber);
+
+		});
 
 	} else {
 
-		console.log("RETR failed for msgnumber " + msgnumber + " because " + rawdata);
-		client.quit();
+		console.log("RETR failed for msgnumber " + msgnumber);
+		client.rset();
 
 	}
 });
@@ -148,25 +141,25 @@ client.on("dele", function(status, msgnumber, data, rawdata) {
 
 		console.log("DELE success for msgnumber " + msgnumber);
 
-		if (currentmsg < totalmsgcount) {
-
-			currentmsg += 1;
+		if (currentmsg > totalmsgcount)
+			client.quit();
+		else
 			client.retr(currentmsg);
-
-		} else  client.quit();
 
 	} else {
 
 		console.log("DELE failed for msgnumber " + msgnumber);
-		client.quit();
+		client.rset();
 
 	}
 });
 
+client.on("rset", function(status,rawdata) {
+	client.quit();
+});
 
 client.on("quit", function(status, rawdata) {
 
-	client.removeAllListeners("close");
 	if (status === true) console.log("QUIT success");
 	else console.log("QUIT failed");
 

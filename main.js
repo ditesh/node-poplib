@@ -27,11 +27,17 @@
 var 	net = require("net"),
 	tls = require("tls"),
 	util = require("util"),
+	crypto = require("crypto"),
 	events = require("events"),
 	hashlib = require("hashlib");
 
 // Constructor
-function POP3Client(port, host, enabletls, debug) {
+function POP3Client(port, host, options) {
+
+	// Optional constructor arguments
+	var enabletls = options.enabletls || "";
+	var ignoretlserrs = (options.ignoretlserrs !== undefined ? options.ignoretlserrs: false);
+	var debug = options.debug || false;
 
 	// Private variables follow
 	var self = this;
@@ -49,7 +55,7 @@ function POP3Client(port, host, enabletls, debug) {
 
 			locked = false;
 			callback = function() {};
-			self.emit("connect-failure", data);
+			self.emit("connect", false, data);
 
 		} else {
 
@@ -70,7 +76,7 @@ function POP3Client(port, host, enabletls, debug) {
 
 			state = 1;
 			self.data["banner"] = banner;
-			self.emit("connect", data);
+			self.emit("connect", true, data);
 
 		}
 	};
@@ -78,12 +84,14 @@ function POP3Client(port, host, enabletls, debug) {
 	// Public variables follow
 	this.data = {
 
-		apop: false,
-		banner: "",
-		username: "",
 		host: host,
 		port: port,
-		tls: enabletls
+		banner: "",
+		stls: false,
+		apop: false,
+		username: "",
+		tls: enabletls,
+		ignoretlserrs: ignoretlserrs
 
 	};
 
@@ -105,7 +113,7 @@ function POP3Client(port, host, enabletls, debug) {
 		if (argument !== undefined) text = text + " " + argument + "\r\n";
 		else text = text + "\r\n";
 
-		if (debug) util.log(text);
+		if (debug) console.log("Client: " + util.inspect(text));
 
 		socket.write(text);
 
@@ -189,18 +197,27 @@ function POP3Client(port, host, enabletls, debug) {
 		data = data.toString("ascii");
 		bufferedData += data;
 
-		if (debug) util.log(data);
+		if (debug) console.log("Server: " + util.inspect(data));
 
-		if (checkResp === true && bufferedData.substr(0, 3) === "+OK") {
+		if (checkResp === true) {
 
-			checkResp = false;
-			response = true;
+			if (bufferedData.substr(0, 3) === "+OK") {
 
-		} else if (checkResp === true && bufferedData.substr(0, 4) === "-ERR") {
+				checkResp = false;
+				response = true;
 
-			checkResp = false;
-			response = false;
+			} else if (bufferedData.substr(0, 4) === "-ERR") {
 
+				checkResp = false;
+				response = false;
+
+			// The following is only used for SASL
+			} else if (multiline === false) {
+
+				checkResp = false;
+				response = true;
+
+			}
 		}
 
 		if (checkResp === false) {
@@ -236,7 +253,10 @@ function POP3Client(port, host, enabletls, debug) {
 	}
 
 	function onError(err) {
-		self.emit("error", err);
+
+		if (err.errno === 111) self.emit("connect", false, err);
+		else self.emit("error", err);
+
 	}
 
 	function onEnd(data) {
@@ -244,6 +264,9 @@ function POP3Client(port, host, enabletls, debug) {
 		socket = null;
 	}
 
+	function onClose() {
+		self.emit("close");
+	}
 
 	// Constructor code follows
 	// Set up EventEmitter constructor function
@@ -253,7 +276,14 @@ function POP3Client(port, host, enabletls, debug) {
 	if (enabletls === true) {
 
 		tlssock = tls.connect(port, host, function() {
-			if (tlssock.authorized === false) self.emit("tls-error", tlssock.authorizationError);
+
+			if (tlssock.authorized === false) {
+
+				if ((self.data["ignoretlserrs"] === false) || (self.data["ignoretlserrs"] === true && tlssock.authorizationError !== "DEPTH_ZERO_SELF_SIGNED_CERT"))
+					self.emit("tls-error", tlssock.authorizationError);
+
+
+			}
 		});
 
 		socket = tlssock;
@@ -264,49 +294,18 @@ function POP3Client(port, host, enabletls, debug) {
 	socket.on("data", onData);
 	socket.on("error", onError);
 	socket.on("end", onEnd);
+	socket.on("close", onClose);
 
 }
 
 util.inherits(POP3Client, events.EventEmitter);
 
-POP3Client.prototype.stls = function() {
+POP3Client.prototype.login = function (username, password) {
 
 	var self = this;
 
-	if (self.getState() !== 1) self.emit("invalid-state", "stls");
-	else if (self.getLocked() === true) self.emit("locked", "stls");
-	else if (self.data["tls"] === true) self.emit("stls", false, "Unable to execute STLS as TLS connection already established");
-	else {
-
-		self.setLocked(true);
-		self.setCallback(function(resp, data) {
-
-			self.setLocked(false);
-			self.setCallback(function() {});
-
-			if (resp === true) {
-
-				self.setCallback(function() {
-					self.emit("stls", true, data);
-				});
-
-				self.starttls();
-
-			} else self.emit("stls", false, data);
-		});
-
-		self.setMultiline(false);
-		self.write("STLS");
-
-	}
-};
-
-POP3Client.prototype.auth = function (username, password) {
-
-	var self = this;
-
-	if (self.getState() !== 1) self.emit("invalid-state", "auth");
-	else if (self.getLocked() === true) self.emit("locked", "auth");
+	if (self.getState() !== 1) self.emit("invalid-state", "login");
+	else if (self.getLocked() === true) self.emit("locked", "login");
 	else {
 
 		self.setLocked(true);
@@ -316,7 +315,7 @@ POP3Client.prototype.auth = function (username, password) {
 
 				self.setLocked(false);
 				self.setCallback(function() {});
-				self.emit("auth", false, data);
+				self.emit("login", false, data);
 
 			} else {
 
@@ -326,7 +325,7 @@ POP3Client.prototype.auth = function (username, password) {
 					self.setCallback(function() {});
 
 					if (resp !== false) self.setState(2);
-					self.emit("auth", resp, data);
+					self.emit("login", resp, data);
 
 				});
 
@@ -340,6 +339,92 @@ POP3Client.prototype.auth = function (username, password) {
 		self.write("USER", username);
 
 	}
+};
+
+// SASL AUTH implementation
+// Currently supports SASL PLAIN and CRAM-MD5
+POP3Client.prototype.auth = function (type, username, password) {
+
+	type = type.toUpperCase();
+	var self = this;
+	var types = {"PLAIN": 1, "CRAM-MD5": 1};
+	var initialresp = "";
+
+	if (self.getState() !== 1) self.emit("invalid-state", "auth");
+	else if (self.getLocked() === true) self.emit("locked", "auth");
+
+	if ((type in types) === false) {
+
+		self.emit("auth", false, "Invalid auth type", null);
+		return;
+
+	}
+
+	function tlsok() {
+
+		if (type === "PLAIN") {
+
+			initialresp = " " + new Buffer(username + "\u0000" + username + "\u0000" + password).toString("base64") + "=";
+			self.setCallback(function(resp, data) {
+
+				if (resp !== false) self.setState(2);
+				self.emit("auth", resp, data, data);
+
+			});
+
+		} else if (type === "CRAM-MD5") {
+
+			self.setCallback(function(resp, data) {
+
+				if (resp === false) self.emit("auth", resp, "Server responded -ERR to AUTH CRAM-MD5", data);
+				else {
+
+					var challenge = new Buffer(data.trim().substr(2), "base64").toString();
+					var hmac = crypto.createHmac("md5", password);
+					var response = new Buffer(username + " " + hmac.update(challenge).digest("hex")).toString("base64");
+
+					self.setCallback(function(resp, data) {
+
+						var errmsg = null;
+
+						if (resp !== false) self.setState(2);
+						else errmsg = "Server responded -ERR to response";
+
+						self.emit("auth", resp, null, data);
+
+					});
+
+					self.write(response);
+
+				}
+			});		
+		}
+
+		self.write("AUTH " + type + initialresp);
+
+	}
+
+	if (self.data["tls"] === false && self.data["stls"] === false) {
+
+		// Remove all existing STLS listeners
+		self.removeAllListeners("stls");
+
+		self.on("stls", function(resp, rawdata) {
+
+			if (resp === false) {
+
+				// We (optionally) ignore self signed cert errors,
+				// in blatant violation of RFC 2595, Section 2.4
+				if (self.data["ignoretlserrs"] === true && rawdata === "DEPTH_ZERO_SELF_SIGNED_CERT") tlsok();
+				else self.emit("auth", false, "Unable to upgrade connection to STLS", rawdata);
+
+			} else tlsok();
+
+		});
+
+		self.stls();
+
+	} else tlsok();
 };
 
 POP3Client.prototype.apop = function (username, password) {
@@ -367,6 +452,45 @@ POP3Client.prototype.apop = function (username, password) {
 
 	}
 };
+
+POP3Client.prototype.stls = function() {
+
+	var self = this;
+
+	if (self.getState() !== 1) self.emit("invalid-state", "stls");
+	else if (self.getLocked() === true) self.emit("locked", "stls");
+	else if (self.data["tls"] === true) self.emit("stls", false, "Unable to execute STLS as TLS connection already established");
+	else {
+
+		self.setLocked(true);
+		self.setCallback(function(resp, data) {
+
+			self.setLocked(false);
+			self.setCallback(function() {});
+
+			if (resp === true) {
+
+				self.setCallback(function(resp, data) {
+
+					if (resp === false && self.data["ignoretlserrs"] === true && data === "DEPTH_ZERO_SELF_SIGNED_CERT")
+						resp = true;
+	
+					self.data["stls"] = true;
+					self.emit("stls", resp, data);
+
+				});
+
+				self.starttls();
+
+			} else self.emit("stls", false, data);
+		});
+
+		self.setMultiline(false);
+		self.write("STLS");
+
+	}
+};
+
 
 POP3Client.prototype.top = function(msgnumber, lines) {
 
@@ -682,7 +806,8 @@ POP3Client.prototype.capa = function() {
 
 	var self = this;
 
-	if (self.getLocked() === true) self.emit("locked", "capa");
+	if (self.getState() === 0) self.emit("invalid-state", "quit");
+	else if (self.getLocked() === true) self.emit("locked", "capa");
 	else {
 
 		self.setLocked(true);

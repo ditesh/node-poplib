@@ -1,6 +1,5 @@
 #!/bin/sh
-
-#	Email pumper helper script
+#	Test script
 #
 #	Copyright (C) 2011 by Ditesh Shashikant Gathani <ditesh@gathani.org>
 #
@@ -22,39 +21,27 @@
 #	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 #	THE SOFTWARE.
 
-QUIET=0
-if [ "$1" = "-q" ]; then
-	QUIET=1
-	shift
-fi
+print_title "login.js"
+print_test "Correct auth"
+OUTPUT=`node login.js --username $USER --password $PASS --host $HOST --port $PORT`;
+print_result 0 $OUTPUT
 
-if [ $QUIET -eq 0 ]; then
+print_test "Invalid auth"
+OUTPUT=`node login.js --username $USER --password ${PASS}a --host $HOST --port $PORT`
+print_result 1 $OUTPUT
 
-	echo "sendmail.sh v0.1 - a utility to pump email into an SMTP server"
-	echo "Copyright (c) 2011 Ditesh Shashikant Gathani <ditesh@gathani.org>"
-	echo
+print_test "Correct host"
+OUTPUT=`node login.js --username $USER --password $PASS --host $HOST --port $PORT`;
+print_result 0 $OUTPUT
 
-fi
+print_test "Invalid host"
+OUTPUT=`node login.js --username $USER --password $PASS --host ${HOST}a --port $PORT`
+print_result 1 $OUTPUT
 
+print_test "Correct port"
+OUTPUT=`node login.js --username $USER --password $PASS --host $HOST --port $PORT`;
+print_result 0 $OUTPUT 
 
-if [ $# -ne 4 ]; then
-
-	echo "Usage:"
-	echo "	sendmail.sh [-q] [number of emails] [to] [subject] [body]"
-	exit 1
-
-fi
-
-if [ $QUIET -eq 0 ]; then
-
-	echo "Sending $1 email(s)"
-	echo "	to: 		$2"
-	echo "	subject: 	\"$3\""
-	echo "	body: 		\"$4\""
-	echo
-
-fi
-
-for i in `seq 1 $1`; do
-	echo "$4" | mail -s "$3" "$2";
-done
+print_test "Invalid port"
+OUTPUT=`node login.js --username $USER --password $PASS --host $HOST --port ${PORT}1`
+print_result 1 $OUTPUT
