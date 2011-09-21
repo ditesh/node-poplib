@@ -1,0 +1,4 @@
+0.1.2:
+
+* Removed unixlib as a dependency
+* Added CHANGELOG
