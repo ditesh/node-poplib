@@ -34,9 +34,11 @@ var 	net = require("net"),
 // Constructor
 function POP3Client(port, host, options) {
 
+	if (options === undefined) options = {};
+
 	// Optional constructor arguments
-	var enabletls = options.enabletls || "";
-	var ignoretlserrs = (options.ignoretlserrs !== undefined ? options.ignoretlserrs: false);
+	var enabletls = options.enabletls !== undefined ? options.enabletls: false;
+	var ignoretlserrs = options.ignoretlserrs !== undefined ? options.ignoretlserrs: false;
 	var debug = options.debug || false;
 
 	// Private variables follow
@@ -222,7 +224,7 @@ function POP3Client(port, host, options) {
 
 		if (checkResp === false) {
 
-			if (multiline === true && bufferedData.substr(bufferedData.length-5) === "\r\n.\r\n") {
+			if (multiline === true && (response === false || bufferedData.substr(bufferedData.length-5) === "\r\n.\r\n")) {
 
 				// Make a copy to avoid race conditions
 				var responseCopy = response;
@@ -672,10 +674,9 @@ POP3Client.prototype.uidl = function(msgnumber) {
 					if (endOffset > startOffset) {
 
 						data = data.substr(startOffset, endOffset-startOffset);
+                        endOffset -= startOffset;
 
-						while(true) {
-
-							if (offset > endOffset) break;
+                        while (offset < endOffset) {
 
 							newoffset = data.indexOf("\r\n", offset);
 							listitem = data.substr(offset, newoffset-offset);
