@@ -28,6 +28,10 @@ print_test "Sending test message to $EMAIL (str: $RANDOMID)"
 OUTPUT=`./sendmail.sh -q 1 $EMAIL "subject with $RANDOMID" "body with $RANDOMID"`
 print_result 0 $OUTPUT
 
+print_test "Sleeping 5 seconds"
+OUTPUT=`sleep 5`
+print_result 0 $OUTPUT
+
 print_test "CAPA test"
 OUTPUT=`node basic.js --username $USER --password $PASS --host $HOST --port $PORT`;
 print_result 0 $OUTPUT

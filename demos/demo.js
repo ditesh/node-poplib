@@ -38,7 +38,11 @@ var msgnumber = argv.msgnumber;
 var username = argv.username;
 var password = argv.password;
 
-var client = new POP3Client(port, host, { argv.networkdebug: (argv.debug === "on" ? true: false) });
+var client = new POP3Client(port, host, {
+
+        debug: (argv.networkdebug === "on" ? true: false)
+
+    });
 
 client.on("error", function(err) {
 
@@ -52,7 +56,7 @@ client.on("error", function(err) {
 client.on("connect", function(rawdata) {
 
 	console.log("CONNECT success");
-	client.auth(username, password);
+	client.login(username, password);
 
 });
 
@@ -64,7 +68,7 @@ client.on("locked", function(cmd) {
 	console.log("Current command has not finished yet. You tried calling " + cmd);
 });
 
-client.on("auth", function(status, rawdata) {
+client.on("login", function(status, rawdata) {
 
 	if (status) {
 
@@ -121,7 +125,7 @@ client.on("stat", function(status, data, rawdata) {
 
 		console.log("STAT success");
 		if (debug) console.log("	Parsed data: " + util.inspect(data));
-		client.list(msgnumber);
+		client.list();
 
 	} else {
 
@@ -135,10 +139,8 @@ client.on("list", function(status, msgcount, msgnumber, data, rawdata) {
 
 	if (status === false) {
 
-		if (msgnumber !== undefined)
-			console.log("LIST failed for msgnumber " + msgnumber);
-		else
-			console.log("LIST failed");
+		if (msgnumber !== undefined) console.log("LIST failed for msgnumber " + msgnumber);
+		else console.log("LIST failed");
 
 		client.quit();
 
@@ -150,7 +152,7 @@ client.on("list", function(status, msgcount, msgnumber, data, rawdata) {
 	} else {
 
 		console.log("LIST success with " + msgcount + " element(s)");
-		client.uidl(msgnumber);
+		client.uidl();
 
 	}
 });
@@ -159,9 +161,9 @@ client.on("uidl", function(status, msgnumber, data, rawdata) {
 
 	if (status === true) {
 
-		console.log("UIDL success for msgnumber " + msgnumber);
+		console.log("UIDL success");
 		if (debug) console.log("	Parsed data: " + data);
-		client.top(msgnumber, 10);
+		client.top(123123, 10);
 
 	} else {
 

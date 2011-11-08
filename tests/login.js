@@ -1,6 +1,6 @@
 /*
 
-	Node.js POP3 client demo in retrieving all POP3 messages into mbox file
+	Node.js POP3 client test file
 
 	Copyright (C) 2011 by Ditesh Shashikant Gathani <ditesh@gathani.org>
 
@@ -40,12 +40,6 @@ var totalmsgcount = 0;
 var currentmsg = 0;
 
 var client = new POP3Client(port, host, { debug: (argv.debug === "on" ? true: false) });
-
-client.on("connect-error", function(err) {
-
-console.log("potato");
-
-});
 
 client.on("error", function(err) {
 	console.log("Server error occurred, failed, " + err);

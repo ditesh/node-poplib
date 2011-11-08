@@ -51,13 +51,15 @@ if [ $# -lt 6 ]; then
 
 	echo "Usage:"
 	echo "	runner.sh username password host standard-port tls-port testemail@example.com [test]"
-	echo "  username: 	POP3 username"
-	echo "  password: 	POP3 password"
-	echo "  host:		POP3 host"
-	echo "  standard-port: 	POP3 port (eg 110)"
-	echo "  tls-port: 	POP3 TLS port (eg 995)"
-	echo "  email: 		valid email address on POP3 server which can receive emails"
-	echo "  test: 		which test to run (default all"
+	echo
+	echo "	username: 	POP3 username"
+	echo "	password: 	POP3 password"
+	echo "	host:		POP3 host"
+	echo "	standard-port:	POP3 port (eg 110)"
+	echo "	tls-port: 	POP3 TLS port (eg 995)"
+	echo "	email: 		valid email address on POP3 server which can receive emails"
+	echo "	test: 		which test to run (default all)"
+	echo
 	exit 1
 
 fi
