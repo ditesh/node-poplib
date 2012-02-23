@@ -9,7 +9,7 @@
             "email": "ditesh@gathani.org",
             "url": "http://ditesh.gathani.org/blog/"
     },
-	"dependencies": ["optimist", "hashlib"],
+	"dependencies": ["optimist"],
     "repository": { "type" : "git", "url" : "https://github.com/ditesh/node-poplib.git" },
     "main": "main.js"
 }
