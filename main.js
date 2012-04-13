@@ -29,7 +29,7 @@ var 	net = require("net"),
 	util = require("util"),
 	crypto = require("crypto"),
 	events = require("events"),
-	crypto = require("crypto");
+	hashlib = require("hashlib2");
 
 // Constructor
 function POP3Client(port, host, options) {
@@ -450,9 +450,7 @@ POP3Client.prototype.apop = function (username, password) {
 		});
 
 		self.setMultiline(false);
-		var cryptoMd5 = crypto.createHash('md5');
-		cryptoMd5.update(self.data["apop-timestamp"] + password);
-		self.write("APOP", username + " " + cryptoMd5.digest('hex'));
+		self.write("APOP", username + " " + hashlib.md5(self.data["apop-timestamp"] + password));
 
 	}
 };
