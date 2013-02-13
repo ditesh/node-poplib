@@ -2,7 +2,7 @@
 
 	Node.js POP3 client demo in retrieving all POP3 messages into mbox file
 
-	Copyright (C) 2011 by Ditesh Shashikant Gathani <ditesh@gathani.org>
+	Copyright (C) 2011-2013 by Ditesh Shashikant Gathani <ditesh@gathani.org>
 
 	Permission is hereby granted, free of charge, to any person obtaining a copy
 	of this software and associated documentation files (the "Software"), to deal
