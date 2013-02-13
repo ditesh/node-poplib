@@ -33,10 +33,16 @@ Here we initialize the client (for plain text transmission):
 
 ````javascript
 var POP3Client = require("node-poplib");
-var client = new POP3Client(port, host, tls);
+var client = new POP3Client(port, host, {
+
+		tlserrs: false,
+		enabletls: true,
+		debug: false
+
+	});
 ````
 
-If the tls parameter is true, the library will use a TLS connection. Note that you will have to set the correct port (generally 995).
+The third parameter, `options`, takes three options. If `enabletls` is true, the library will use a TLS connection. Note that you will have to set the correct port (generally 995). If `tlserrs` is true, then TLS errors will be ignored. Finally, the `debug` parameter prints out requests and responses.
 
 Next, we trap several common states:
 
