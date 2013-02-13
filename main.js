@@ -29,7 +29,7 @@ var 	net = require("net"),
 	util = require("util"),
 	crypto = require("crypto"),
 	events = require("events"),
-	hashlib = require("hashlib");
+	hashlib = require("hashlib2");
 
 // Constructor
 function POP3Client(port, host, options) {
