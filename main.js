@@ -24,12 +24,11 @@
 
 */
 
-var 	net = require("net"),
+var net = require("net"),
 	tls = require("tls"),
 	util = require("util"),
 	crypto = require("crypto"),
-	events = require("events"),
-	hashlib = require("hashlib");
+	events = require("events");
 
 // Constructor
 function POP3Client(port, host, options) {
@@ -450,7 +449,7 @@ POP3Client.prototype.apop = function (username, password) {
 		});
 
 		self.setMultiline(false);
-		self.write("APOP", username + " " + hashlib.md5(self.data["apop-timestamp"] + password));
+		self.write("APOP", username + " " + crypto.createHash("md5").update(self.data["apop-timestamp"] + password).digest("hex"));
 
 	}
 };
