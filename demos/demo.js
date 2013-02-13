@@ -27,21 +27,21 @@
 var util = require("util");
 var POP3Client = require("../main.js");
 var     argv = require('optimist')
-                .usage("Usage: $0 --host [host] --port [port] --username [username] --password [password] --debug [on/off] --networkdebug [on/off] --msgnumber [number]")
+                .usage("Usage: $0 --host [host] --port [port] --username [username] --password [password] --tls [on/off] --debug [on/off] --networkdebug [on/off] --msgnumber [number]")
                 .demand(['username', 'password'])
                 .argv;
 
 var host = argv.host || "localhost";
 var port = argv.port || 110;
 var debug = argv.debug === "on" ? true : false;
+var enabletls = argv.tls === "on" ? true : false;
 var msgnumber = argv.msgnumber;
 var username = argv.username;
 var password = argv.password;
 
 var client = new POP3Client(port, host, {
-
-        debug: (argv.networkdebug === "on" ? true: false)
-
+        debug: debug,
+        enabletls: enabletls
     });
 
 client.on("error", function(err) {
@@ -89,7 +89,7 @@ client.on("capa", function(status, data, rawdata) {
 	if (status) {
 
 		console.log("CAPA success");
-		if (debug) console.log("	Parsed data: " + util.inspect(data));
+		if (debug) console.log("Parsed data: " + util.inspect(data));
 		client.noop();
 
 	} else {
@@ -124,7 +124,7 @@ client.on("stat", function(status, data, rawdata) {
 	if (status === true) {
 
 		console.log("STAT success");
-		if (debug) console.log("	Parsed data: " + util.inspect(data));
+		if (debug) console.log("Parsed data: " + util.inspect(data));
 		client.list();
 
 	} else {
@@ -162,7 +162,7 @@ client.on("uidl", function(status, msgnumber, data, rawdata) {
 	if (status === true) {
 
 		console.log("UIDL success");
-		if (debug) console.log("	Parsed data: " + data);
+		if (debug) console.log("Parsed data: " + data);
 		client.top(123123, 10);
 
 	} else {
@@ -179,7 +179,7 @@ client.on("top", function(status, msgnumber, data, rawdata) {
 	if (status === true) {
 
 		console.log("TOP success for msgnumber " + msgnumber);
-		if (debug) console.log("	Parsed data: " + data);
+		if (debug) console.log("Parsed data: " + data);
 		client.retr(msgnumber);
 
 	} else {
@@ -195,12 +195,10 @@ client.on("retr", function(status, msgnumber, data, rawdata) {
 	if (status === true) {
 
 		console.log("RETR success for msgnumber " + msgnumber);
-		if (debug) console.log("	Parsed data: " + data);
+		if (debug) console.log("Parsed data: " + data);
 
-                if (msgnumber !== undefined)
-                        client.dele(msgnumber);
-                else
-                        client.quit();
+        if (msgnumber !== undefined) client.dele(msgnumber);
+        else client.quit();
 
 	} else {
 

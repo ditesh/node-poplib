@@ -1,6 +1,12 @@
+0.1.5 (Wed Feb 13 19:05:40 MYT 2013)
+
+    * Fixed issue #4 (thanks to [https://github.com/AVBelyy] )
+    * Fixed issue #3 (replaced references to hashlib with inbuilt crypto)
+    * Better documentation, including 
+
 0.1.4 (Tue Nov  8 11:30:36 MYT 2011):
 
-    * Fixed issue #1 (thanks to Nazar [http://github.com/nazar] )
+    * Fixed issue #1 (thanks to Nazar [https://github.com/nazar] )
     * Removed unused files
     * Fixed demo/demo.js
     * Fixed bug for non-match on multiline response when -ERR is received

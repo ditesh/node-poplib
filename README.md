@@ -25,7 +25,25 @@ You have two installation options:
 
 1. Download the source and install it yourself
 
-## Usage
+## Quick demo
+
+Connect to GMail's POP3 servers using the provided demo script as follows:
+
+````bash
+$ node demos/demo.js --host pop.gmail.com --port 995 --username user@gmail.com --password potato --tls on --debug on --networkdebug on
+Server: '+OK Gpop ready for requests from 1.2.3.4 bh7pf61475604pab.24\r\n'
+CONNECT success
+Client: 'USER user@gmail.com\r\n'
+Server: '+OK send PASS\r\n'
+Client: 'PASS potato\r\n'
+Server: '-ERR [AUTH] Username and password not accepted.\r\n'
+LOGIN/PASS failed
+Client: 'QUIT\r\n'
+Server: '+OK Farewell.\r\n'
+QUIT success
+````
+
+## Detailed Usage
 
 node-poplib is event based. It is best to illustrate via examples:
 
