@@ -50,7 +50,7 @@ node-poplib is event based. It is best to illustrate via examples:
 Here we initialize the client (for plain text transmission):
 
 ````javascript
-var POP3Client = require("node-poplib");
+var POP3Client = require("poplib");
 var client = new POP3Client(port, host, {
 
 		tlserrs: false,
