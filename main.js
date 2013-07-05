@@ -276,11 +276,16 @@ function POP3Client(port, host, options) {
 	// Remote end socket
 	if (enabletls === true) {
 
-		tlssock = tls.connect(port, host, function() {
+		tlssock = tls.connect(
+        {
+          host: host,
+          port: port,
+          rejectUnauthorized: !self.data.ignoretlserrs
+        }, function() {
 
 			if (tlssock.authorized === false) {
 
-				if ((self.data["ignoretlserrs"] === false) || (self.data["ignoretlserrs"] === true && tlssock.authorizationError !== "DEPTH_ZERO_SELF_SIGNED_CERT"))
+				if (self.data["ignoretlserrs"] === false)
 					self.emit("tls-error", tlssock.authorizationError);
 
 
