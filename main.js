@@ -595,7 +595,6 @@ POP3Client.prototype.list = function(msgnumber) {
 		if (msgnumber !== undefined) self.setMultiline(false);
 		else self.setMultiline(true);
 
-		self.setMultiline(true);
 		self.write("LIST", msgnumber);
 
 	}
