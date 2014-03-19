@@ -1,3 +1,9 @@
+0.1.6 (Wed Mar 19 13:16:51 MYT 2014)
+    * Fixed examples in README.md
+    * Added MIT license to package.json
+    * Addition of TLS options to pass through to underlying TLS module (thanks to Brendan Hill [https://github.com/brendanhill])
+    * Fixed ignoring TLS errors, bug in LIST (thanks to Brendan Hill [https://github.com/brendanhill])
+
 0.1.5 (Wed Feb 13 19:05:40 MYT 2013)
 
     * Fixed issue #4 (thanks to [https://github.com/AVBelyy] )
