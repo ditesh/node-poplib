@@ -39,6 +39,8 @@ function POP3Client(port, host, options) {
 	var enabletls = options.enabletls !== undefined ? options.enabletls: false;
 	var ignoretlserrs = options.ignoretlserrs !== undefined ? options.ignoretlserrs: false;
 	var debug = options.debug || false;
+	
+	var tlsDirectOpts = options.tslopts !== undefined ? options.tlsopts: {};
 
 	// Private variables follow
 	var self = this;
@@ -276,7 +278,7 @@ function POP3Client(port, host, options) {
 	// Remote end socket
 	if (enabletls === true) {
 
-		tlssock = tls.connect(port, host, function() {
+		tlssock = tls.connect(port, host, tlsDirectOpts, function() {
 
 			if (tlssock.authorized === false) {
 
