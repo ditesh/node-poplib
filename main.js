@@ -40,7 +40,7 @@ function POP3Client(port, host, options) {
 	var ignoretlserrs = options.ignoretlserrs !== undefined ? options.ignoretlserrs: false;
 	var debug = options.debug || false;
 	
-	var tlsDirectOpts = options.tslopts !== undefined ? options.tlsopts: {};
+	var tlsDirectOpts = options.tlsopts !== undefined ? options.tlsopts: {};
 
 	// Private variables follow
 	var self = this;
