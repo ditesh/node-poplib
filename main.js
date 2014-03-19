@@ -278,15 +278,17 @@ function POP3Client(port, host, options) {
 	// Remote end socket
 	if (enabletls === true) {
 
-		tlssock = tls.connect(port, host, tlsDirectOpts, function() {
+		tlssock = tls.connect({
+            host: host,
+            port: port,
+            rejectUnauthorized: !self.data.ignoretlserrs
+            }, function() {
 
-			if (tlssock.authorized === false) {
+                if (tlssock.authorized === false && 
+                    self.data["ignoretlserrs"] === false)
+                        self.emit("tls-error", tlssock.authorizationError);
 
-				if ((self.data["ignoretlserrs"] === false) || (self.data["ignoretlserrs"] === true && tlssock.authorizationError !== "DEPTH_ZERO_SELF_SIGNED_CERT"))
-					self.emit("tls-error", tlssock.authorizationError);
-
-
-			}
+            }
 		});
 
 		socket = tlssock;
@@ -597,7 +599,6 @@ POP3Client.prototype.list = function(msgnumber) {
 		if (msgnumber !== undefined) self.setMultiline(false);
 		else self.setMultiline(true);
 
-		self.setMultiline(true);
 		self.write("LIST", msgnumber);
 
 	}
