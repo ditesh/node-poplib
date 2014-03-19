@@ -50,7 +50,7 @@ node-poplib is event based. It is best to illustrate via examples:
 Here we initialize the client (for plain text transmission):
 
 ````javascript
-var POP3Client = require("node-poplib");
+var POP3Client = require("poplib");
 var client = new POP3Client(port, host, {
 
 		tlserrs: false,
@@ -104,12 +104,12 @@ On a successful connect, we try authenticating:
 client.on("connect", function() {
 
         console.log("CONNECT success");
-        client.auth(username, password);
+        client.login(username, password);
 
 });
 ````
 
-Note that on successful auth, we try listing. For all events, the first received argument is always a boolean indicating whether the command succeeded. The last received argument is always the raw unparsed data received from the remote server. The intermediate arguments contain parsed data.
+Note that on successful login, we try listing. For all events, the first received argument is always a boolean indicating whether the command succeeded. The last received argument is always the raw unparsed data received from the remote server. The intermediate arguments contain parsed data.
 
 ````javascript
 client.on("login", function(status, rawdata) {
