@@ -282,14 +282,14 @@ function POP3Client(port, host, options) {
             host: host,
             port: port,
             rejectUnauthorized: !self.data.ignoretlserrs
-            }, function() {
+        }, function() {
 
-                if (tlssock.authorized === false && 
-                    self.data["ignoretlserrs"] === false)
-                        self.emit("tls-error", tlssock.authorizationError);
+            if (tlssock.authorized === false && 
+                self.data["ignoretlserrs"] === false)
+                    self.emit("tls-error", tlssock.authorizationError);
 
-            }
-		});
+        }
+    );
 
 		socket = tlssock;
 
