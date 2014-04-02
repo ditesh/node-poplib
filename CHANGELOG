@@ -1,3 +1,6 @@
+0.1.7 (Wed Apr  2 17:41:53 MYT 2014)
+    * Fixed typos
+
 0.1.6 (Wed Mar 19 13:16:51 MYT 2014)
     * Fixed examples in README.md
     * Added MIT license to package.json

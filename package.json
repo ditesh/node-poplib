@@ -1,6 +1,6 @@
 {
 	"name": "poplib",
-    "version": "v0.1.6",
+    "version": "v0.1.7",
     "license": "MIT",
     "description": "POP3 client library for Node.js",
     "homepage": "https://github.com/ditesh/node-poplib",
