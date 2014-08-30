@@ -53,7 +53,7 @@ Here we initialize the client (for plain text transmission):
 var POP3Client = require("poplib");
 var client = new POP3Client(port, host, {
 
-		tlserrs: false,
+		ignoretlserrs: false,
 		enabletls: true,
 		debug: false
 
