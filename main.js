@@ -142,7 +142,11 @@ function POP3Client(port, host, options) {
 
 		var sslcontext = require('crypto').createCredentials(options);
 		var pair = tls.createSecurePair(sslcontext, false);
-		var cleartext = pipe(pair);
+		function onTlsError(e){
+                   self.emit('error',e);
+                }
+                pair.on('error', onTlsError);
+                var cleartext = pipe(pair);
 
 		pair.on('secure', function() {
 
