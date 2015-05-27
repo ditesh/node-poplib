@@ -844,7 +844,7 @@ POP3Client.prototype.capa = function() {
 };
 
 POP3Client.prototype.quit = function() {
-
+    try{
 	var self = this;
 
 	if (self.getState() === 0) self.emit("invalid-state", "quit");
@@ -866,6 +866,9 @@ POP3Client.prototype.quit = function() {
 		self.write("QUIT", undefined);
 
 	}
+      }catch(e){
+        self.emit('error',e);
+      }
 };
 
 module.exports = POP3Client;
