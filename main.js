@@ -281,7 +281,8 @@ function POP3Client(port, host, options) {
 		tlssock = tls.connect({
             host: host,
             port: port,
-            rejectUnauthorized: !self.data.ignoretlserrs
+            rejectUnauthorized: !self.data.ignoretlserrs,
+			servername: host
         }, function() {
 
             if (tlssock.authorized === false && 
